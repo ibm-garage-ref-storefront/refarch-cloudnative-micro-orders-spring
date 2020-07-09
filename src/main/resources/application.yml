@@ -1,0 +1,39 @@
+eureka:
+  client:
+    enabled: false
+    registerWithEureka: false
+  fetchRegistry: false
+
+# Server configuration
+server:
+  context-path: /micro
+  port: ${SERVICE_PORT:8084}
+
+management:
+  port: ${MANAGEMENT_PORT:8094}
+
+# Spring properties
+spring:
+  application:
+    name: orders
+
+  # MySQL Data source configuration
+  datasource:
+    driverClassName: com.mysql.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3307}/${MYSQL_DATABASE:ordersdb}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
+    port: ${MYSQL_PORT:3307}
+    max-active: 4
+    testOnBorrow: true
+    validationQuery: SELECT 1
+
+  jpa:
+    database: MYSQL
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+      naming-strategy: org.hibernate.cfg.EJB3NamingStrategy
+
+jwt:
+  sharedSecret: ${HS256_KEY}

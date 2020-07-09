@@ -1,0 +1,127 @@
+sudo: required
+dist: xenial
+language: java
+jdk:
+  - openjdk8
+env:
+  global:
+    - IMAGE_NAME=bluecompute-orders
+    - RELEASE_NAME=orders
+    - TAG=travis-latest
+    - SERVICE_PORT=8084
+    - MANAGEMENT_PORT=8094
+    - HS256_KEY=E6526VJkKYhyTFRFMC0pTECpHcZ7TGcq8pKsVVgz9KtESVpheEO284qKzfzg8HpWNBPeHOxNGlyudUHi6i8tFQJXC8PiI48RUpMh23vPDLGD35pCM0417gf58z5xlmRNii56fwRCmIhhV7hDsm3KO2jRv4EBVz7HrYbzFeqI45CaStkMYNipzSm2duuer7zRdMjEKIdqsby0JfpQpykHmC5L6hxkX0BT7XWqztTr6xHCwqst26O0g8r7bXSYjp4a
+    - MYSQL_DATABASE=ordersdb
+stages:
+  - local build and test
+  - docker build, deploy, and test
+  - kubernetes build, deploy, and test
+jobs:
+  include:
+    - stage: local build and test
+      services:
+      - mysql
+      before_cache:
+        - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+        - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+      cache:
+        directories:
+          - $HOME/.gradle/caches/
+          - $HOME/.gradle/wrapper/
+      env:
+        - MYSQL_HOST=127.0.0.1
+        - MYSQL_PORT=3306
+        - MYSQL_USER=root
+        - MYSQL_PASSWORD=""
+      before_script:
+      # Wait MySQL
+      - until mysql -h ${MYSQL_HOST} -P ${MYSQL_PORT} -uroot -e status; do echo "waiting for mysql"; sleep 1; done; echo "MySQL Started"
+      # Create ordersdb database
+      - mysql -u ${MYSQL_USER} -e "create database ${MYSQL_DATABASE}"
+      script:
+      # Gradle Build
+      - ./gradlew build
+      # Start Application
+      - java -jar build/libs/micro-${RELEASE_NAME}-0.0.1.jar &
+      # Let the application start
+      - bash scripts/health_check.sh
+      # Run API Test
+      - bash scripts/api_tests.sh 127.0.0.1 ${SERVICE_PORT} ${HS256_KEY}
+    - stage: docker build, deploy, and test
+      services:
+      - docker
+      install:
+        - true
+      env:
+        - MYSQL_ROOT_PASSWORD=admin123
+        - MYSQL_PORT=3307
+        - MYSQL_USER=dbuser
+        - MYSQL_PASSWORD=password
+      before_script:
+      # Start Docker Container
+      - docker run --name ordersmysql -p ${MYSQL_PORT}:3306 -d -e MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD} -e MYSQL_USER=${MYSQL_USER} -e MYSQL_PASSWORD=${MYSQL_PASSWORD} -e MYSQL_DATABASE=${MYSQL_DATABASE} mysql:5.7.14
+      # Wait MySQL
+      - until mysql -h 127.0.0.1 -P ${MYSQL_PORT} -u${MYSQL_USER} -p${MYSQL_PASSWORD} -e status; do echo "waiting for mysql"; sleep 1; done; echo "MySQL Started"
+      # Get IP Address for MySQL
+      - MYSQL_HOST=$(docker inspect ordersmysql | jq -r '.[0].NetworkSettings.IPAddress')
+      script:
+      # Build Docker image
+      - docker build -t "${IMAGE_NAME}:${TAG}" .
+      # Start Container and Connect to local MySQL Service
+      - docker run --name ${RELEASE_NAME} -d -p ${SERVICE_PORT}:${SERVICE_PORT} -p ${MANAGEMENT_PORT}:${MANAGEMENT_PORT} -e MYSQL_HOST=${MYSQL_HOST} -e MYSQL_PORT=3306 -e MYSQL_USER=${MYSQL_USER} -e MYSQL_PASSWORD=${MYSQL_PASSWORD} -e MYSQL_DATABASE=${MYSQL_DATABASE} -e HS256_KEY="${HS256_KEY}" "${IMAGE_NAME}:${TAG}"
+      # Check that the container is running
+      - docker ps
+      # Check logs to see if it started properly
+      - docker logs -f ${RELEASE_NAME} &
+      # Let the application start
+      - bash scripts/health_check.sh
+      # Run API Test
+      - bash scripts/api_tests.sh 127.0.0.1 ${SERVICE_PORT} ${HS256_KEY}
+    - stage: kubernetes build, deploy, and test
+      services:
+      - docker
+      install:
+        - true
+      env:
+      # Minikube variables
+      - CHANGE_MINIKUBE_NONE_USER=true
+      - MINIKUBE_WANTUPDATENOTIFICATION=false
+      - MINIKUBE_WANTREPORTERRORPROMPT=false
+      - MINIKUBE_HOME=$HOME
+      - KUBECONFIG=$HOME/.kube/config
+      # Application variables
+      - CHART_NAME=orders
+      - MYSQL_ROOT_PASSWORD=admin123
+      - MYSQL_HOST=${RELEASE_NAME}-mariadb-${RELEASE_NAME}-mariadb
+      - MYSQL_PORT=3307
+      - MYSQL_USER=dbuser
+      - MYSQL_PASSWORD=password
+      before_script:
+      # Install minikube and helm
+      - wget https://raw.githubusercontent.com/ibm-cloud-architecture/refarch-cloudnative-kubernetes/spring/scripts/install_minikube_and_helm.sh && chmod +x install_minikube_and_helm.sh && bash install_minikube_and_helm.sh && rm install_minikube_and_helm.sh
+      # Install MariaDB Chart
+      - helm upgrade --install orders-mariadb --version 5.2.2 --set service.port=${MYSQL_PORT},nameOverride=${RELEASE_NAME}-mariadb,rootUser.password=${MYSQL_ROOT_PASSWORD},db.user=${MYSQL_USER},db.password=${MYSQL_PASSWORD},db.name=${MYSQL_DATABASE},replication.enabled=false,master.persistence.enabled=false,slave.replicas=1,slave.persistence.enabled=false stable/mariadb
+      script:
+      # Build Docker image
+      - docker build -t "${IMAGE_NAME}:${TAG}" .
+      # helm lint
+      - helm lint chart/${CHART_NAME}
+      # helm package
+      - helm package chart/${CHART_NAME}
+      # helm install from packaged chart. Use pullPolicy=Never so it uses local docker image
+      - CHART_VERSION="$(cat chart/${CHART_NAME}/Chart.yaml | grep version | awk '{print $2}')"
+      - helm upgrade --install ${RELEASE_NAME} --set image.repository="${IMAGE_NAME}",image.tag="${TAG}",image.pullPolicy=Never,mariadb.host=${MYSQL_HOST},mariadb.user=${MYSQL_USER},mariadb.password=${MYSQL_PASSWORD},mariadb.database=${MYSQL_DATABASE} ${CHART_NAME}-${CHART_VERSION}.tgz
+      # Get Deployment Name
+      - DEPLOYMENT="deployment/${RELEASE_NAME}-${CHART_NAME}"
+      # Wait for deployment to be ready
+      - kubectl rollout status ${DEPLOYMENT}
+      # Get logs
+      - kubectl logs -f ${DEPLOYMENT} &
+      # Port Forwarding
+      - kubectl port-forward ${DEPLOYMENT} ${SERVICE_PORT} ${MANAGEMENT_PORT} &
+      - echo "Sleeping for 3 seconds while connection is established..."
+      - sleep 3
+      # Let the application start
+      - bash scripts/health_check.sh
+      # Run API Test
+      - bash scripts/api_tests.sh

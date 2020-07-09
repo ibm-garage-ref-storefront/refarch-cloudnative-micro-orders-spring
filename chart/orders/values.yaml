@@ -1,0 +1,88 @@
+replicaCount: 1
+
+image:
+  repository: ibmcase/bluecompute-orders
+  tag: 0.6.0
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  externalPort: 8084
+  internalPort: 8084
+  managementPort: 8094
+  nodePort: 32384
+
+ingress:
+  enabled: false
+  hostname: #orders.bluecompute.com
+  path: /micro/orders
+  annotations:
+    ingress.bluemix.net/redirect-to-https: "True"
+  enableTLS: false
+  TLS:
+  - secretName: orders.bluecompute.com
+    hosts:
+      - orders.bluecompute.com
+
+mariadb:
+  host:
+  port: 3307
+  existingSecret:
+  user: dbuser
+  password: password
+  database: ordersdb
+
+# Used to check that MariaDB deployment is ready
+mysql:
+  image: "mysql"
+  imageTag: "5.7.14"
+  imagePullPolicy: IfNotPresent
+
+hs256key:
+  # If there is an existing secret with the key, provide it here
+  secretName:
+  secret: E6526VJkKYhyTFRFMC0pTECpHcZ7TGcq8pKsVVgz9KtESVpheEO284qKzfzg8HpWNBPeHOxNGlyudUHi6i8tFQJXC8PiI48RUpMh23vPDLGD35pCM0417gf58z5xlmRNii56fwRCmIhhV7hDsm3KO2jRv4EBVz7HrYbzFeqI45CaStkMYNipzSm2duuer7zRdMjEKIdqsby0JfpQpykHmC5L6hxkX0BT7XWqztTr6xHCwqst26O0g8r7bXSYjp4a
+
+global:
+  hs256key:
+    secretName:
+  istio:
+    enabled:
+    gateway:
+      name:
+
+resources:
+  limits:
+    memory: 384Mi
+  requests:
+    memory: 64Mi
+
+labels:
+  app: orders
+  version: v1
+  tier: backend
+
+securityContext:
+  runAsUser: 2000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+istio:
+  enabled: false
+  # ISTIO_MUTUAL, SIMPLE, DISABLE
+  mTLS: ISTIO_MUTUAL
+  # LEAST_CONN, ROUND_ROBIN
+  loadBalancer: LEAST_CONN
+  gateway:
+    enabled: false
+    name:
+    hosts:
+      - "orders.bluecompute.com"
+    TLS:
+      enabled: false
+      # SIMPLE, MUTUAL
+      mode: SIMPLE
+      httpsRedirect: false
+      serverCertificate: /etc/istio/ingressgateway-certs/tls.crt
+      privateKey: /etc/istio/ingressgateway-certs/tls.key
+      caCertificates: /etc/istio/ingressgateway-ca-certs/ca-chain.cert.pem
