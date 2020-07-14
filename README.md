@@ -16,7 +16,7 @@ https://cloudnativereference.dev/*
     + [Run the MariaDB Docker Container](#run-the-mysql-docker-container)
     + [Run the Orders application](#run-the-inventory-application)
     + [Validating the application](#validating-the-application)
-    + [Validating Mobile Push Notifications](#validating-mobile-push)
+    + [Validating Mobile Push Notifications](#validating-mobile-push-notifications)
     + [Exiting the application](#exiting-the-application)
 * [Conclusion](#conclusion)
 
