@@ -306,6 +306,16 @@ Now you can access the pact broker to see if the tests are successful at http://
 
 ### Validating Mobile Push Notifications
 The Orders Microservice integrates with IBM Mobile Foundation to send order shipment status as mobile push notifications to the Storefront Mobile Application.  You can validate this feature as follows:-
+- Setup the [storefront mobile application](https://github.com/ibm-garage-ref-storefront/storefront-mobile/blob/master/README.md) and make the following changes therein: -
+    - Edit mfpconfig/app_config.json in the mobile application and update references to the Orders Microservice base url to the url of the Orders Microservice you are running locally
+- Ensure all microservices of storefront other than the Orders microservice are started and running as configured in mfpconfig/app_config.json
+- Run Mobile Foundation services locally following the instructions [here](https://github.com/ibm-garage-ref-storefront/storefront-mobile/blob/master/README.md#running-ibm-mobilefoundation-services-locally-optional)
+- Run the Orders Microservice using the following command.
+```
+appsody run --docker-options "-e MYSQL_HOST=host.docker.internal -e MYSQL_PORT=3306 -e MYSQL_DATABASE=ordersdb -e MYSQL_USER=dbuser -e      MYSQL_PASSWORD=password -e HS256_KEY=<Paste HS256 key here> -e MF_APPID=com.ibm.storefront -e MF_URL=http://localhost:9080 -e MF_CLIENTID=storefront -e MF_SECRET=storefront"
+```
+Ensure that the value provided for HS256_KEY is the same as that used by the Storefront Auth server that the mobile application is configured for.
+- Build and run the storefront mobile application.  When the application is launched on the mobile device login with a valid userId, browse catalog and create orders.   On creation of an orders you should receive push notifications on the mobile device with a message about the order's shipment.  You have now successfully validated the Orders microservice for mobile push notifications.
 
 ### Exiting the application
 
