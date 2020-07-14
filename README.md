@@ -16,6 +16,7 @@ https://cloudnativereference.dev/*
     + [Run the MariaDB Docker Container](#run-the-mysql-docker-container)
     + [Run the Orders application](#run-the-inventory-application)
     + [Validating the application](#validating-the-application)
+    + [Validating Mobile Push Notifications](#validating-mobile-push)
     + [Exiting the application](#exiting-the-application)
 * [Conclusion](#conclusion)
 
@@ -302,6 +303,9 @@ To verify the results, run the below command.
 Now you can access the pact broker to see if the tests are successful at http://localhost:8500/.
 
 ![Orders Pact Broker](static/orders_pactbroker.png?raw=true)
+
+### Validating Mobile Push Notifications
+The Orders Microservice integrates with IBM Mobile Foundation to send order shipment status as mobile push notifications to the Storefront Mobile Application.  You can validate this feature as follows:-
 
 ### Exiting the application
 
