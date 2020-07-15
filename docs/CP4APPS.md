@@ -20,6 +20,7 @@ https://github.com/ibm-garage-ref-storefront/refarch-cloudnative-storefront*
       * [Create registry secrets](#create-registry-secrets)
       * [Create Webhook for the app repo](#create-webhook-for-the-app-repo)
       * [Deploy the app](#deploy-the-app)
+    + [Try Mobile Push Notifications Integration](#try-mobile-push-notifications-integration)
 * [Conclusion](#conclusion)
 
 ## Introduction
@@ -288,6 +289,27 @@ If it is running successfully, you will see something like below.
 $ curl -H "Authorization: Bearer ${jwt}" "http:http://orders-ms-spring-storefront.csantana-demos-ocp43-fa9ee67c9ab6a7791435450358e564cc-0000.us-east.containers.appdomain.cloud/micro/orders"
 [{"id":"2c91808371ee5aa50171ee653f440000","date":"2020-05-07T09:09:04.000+0000","itemId":13401,"customerId":"admin","count":1}]
 ```
+
+## Try Mobile Push Notifications Integration
+The Orders Microservice integrates with IBM Mobile Foundation to send order shipment status as mobile push notifications to the Storefront Mobile Application.  You can try this integration as follows: -
+  - Setup the [storefront mobile application](https://github.com/ibm-garage-ref-storefront/storefront-mobile/blob/master/README.md) and get it ready with all required configurations as detailed therein
+  - Update the `app-deploy.yaml` of this Orders microservice to include the following enviornment variables in addition to existing ones
+    ```
+    env:
+    ...
+    - name: MF_URL
+      value: "<service url of IBM Mobile Foundation"
+    - name: MF_APPID
+      value: "com.ibm.storefront"
+    - name: MF_CLIENTID
+      value: "storefront"
+    - name: MF_SECRET
+      value: "storefront"
+    ```
+ - Ensure all microservices of storefront and IBM Mobile Foundation services are deployed successfully and running
+ - Build and run the storefront mobile application.  When the application is launched on the mobile device login with a valid userId, browse catalog and create orders.   On creation of an orders you should receive push notifications on the mobile device with a message about the order's shipment.  
+
+You have now successfully tried out integrtion of mobile push notifications with the Oders microservice.
 
 ## Conclusion
 
