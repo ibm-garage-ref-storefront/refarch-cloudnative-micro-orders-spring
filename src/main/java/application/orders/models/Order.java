@@ -21,23 +21,23 @@ import org.hibernate.annotations.GenericGenerator;
 public class Order {
 
 	@Id //primary key
-	@Column(name = "orderId")
+	@Column(name = "orderId", length = 50)
 	@GeneratedValue(generator="uuid-generator")
 	@GenericGenerator(name="uuid-generator", strategy="uuid")
 	String id;
-	
+
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "date")
 	Date date;
-	
+
 	@Basic
 	@Column(name = "itemId")
 	int itemId;
 
 	@Basic
-	@Column(name = "customerId")
+	@Column(name = "customerId", length = 50)
 	String customerId;
-	
+
 	@Basic
 	@Column(name = "count")
 	int count;
@@ -45,7 +45,7 @@ public class Order {
 	@Basic
 	@Column(name = "notifyMobile")
 	String notifyMobile = "false";
-	
+
 	public Order() {
 		super();
 //		this.id = UUID.randomUUID().toString();
@@ -105,5 +105,5 @@ public class Order {
 	}
 
 
-	
+
 }
