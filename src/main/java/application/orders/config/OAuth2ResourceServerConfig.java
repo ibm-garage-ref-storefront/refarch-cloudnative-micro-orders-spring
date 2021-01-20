@@ -22,7 +22,7 @@ import org.springframework.security.oauth2.provider.token.store.JwtTokenStore;
 public class OAuth2ResourceServerConfig extends ResourceServerConfigurerAdapter {
     @Autowired
     private JwtConfig securityConfig;
-    
+
     @Override
     public void configure(ResourceServerSecurityConfigurer resources) throws Exception {
     	resources.tokenStore(tokenStore());
@@ -34,27 +34,27 @@ public class OAuth2ResourceServerConfig extends ResourceServerConfigurerAdapter 
         http
             .requestMatchers().antMatchers("/orders").and()
             .authorizeRequests()
-            .anyRequest().access("#oauth2.hasScope('blue')").and()
+            .anyRequest().access("#oauth2.hasScope('openid')").and()
             .exceptionHandling().accessDeniedHandler(new OAuth2AccessDeniedHandler());
     }
-    
+
     @Bean
     @Qualifier("tokenStore")
     protected TokenStore tokenStore() {
         return new JwtTokenStore(jwtAccessTokenConverter());
     }
-    
+
     @Bean
     @Qualifier("jwtAccessTokenConverter")
 	protected JwtAccessTokenConverter jwtAccessTokenConverter() {
 		final JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
-	   
+
 		/* for HS256, set the signing key */
 		converter.setSigningKey(securityConfig.getSharedSecret());
-		
+
 		return converter;
 	}
-     
+
     @Bean
     @Primary
     protected DefaultTokenServices tokenServices() {
